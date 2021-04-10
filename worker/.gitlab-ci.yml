@@ -1,0 +1,46 @@
+stages:
+  - test
+  - build
+
+# This need to be fixed (probably through the usage of a dedicated runner)
+test:
+  stage: test
+  script:
+    - echo "some tests should be done..."
+
+# Building with Buildah
+build dotnet version:
+  stage: build
+  image: ubuntu:20.10
+  script:
+    - apt-get -y update
+    - apt-get -y install buildah runc
+    - buildah login --tls-verify=false -u "gitlab-ci-token" -p "$CI_JOB_TOKEN" $CI_REGISTRY
+    - buildah bud --tls-verify=false -f Dockerfile.dotnet -t $CI_REGISTRY_IMAGE:${CI_BUILD_REF} .
+    - buildah tag $CI_REGISTRY_IMAGE:${CI_BUILD_REF} $CI_REGISTRY_IMAGE:dotnet
+    - buildah push --tls-verify=false $CI_REGISTRY_IMAGE:${CI_BUILD_REF}
+    - buildah push --tls-verify=false $CI_REGISTRY_IMAGE:dotnet
+  only:
+    refs:
+      - master
+    changes:
+      - Dockerfile.java
+      - java/**/*
+
+build java version:
+  stage: build
+  image: ubuntu:20.10
+  script:
+    - apt-get -y update
+    - apt-get -y install buildah runc
+    - buildah login --tls-verify=false -u "gitlab-ci-token" -p "$CI_JOB_TOKEN" $CI_REGISTRY
+    - buildah bud --tls-verify=false -f Dockerfile.java -t $CI_REGISTRY_IMAGE:${CI_BUILD_REF} .
+    - buildah tag $CI_REGISTRY_IMAGE:${CI_BUILD_REF} $CI_REGISTRY_IMAGE:java
+    - buildah push --tls-verify=false $CI_REGISTRY_IMAGE:${CI_BUILD_REF}
+    - buildah push --tls-verify=false $CI_REGISTRY_IMAGE:java
+  only:
+    refs:
+      - master
+    changes:
+      - Dockerfile.dotnet
+      - dotnet/**/*
